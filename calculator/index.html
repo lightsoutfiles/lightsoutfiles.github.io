@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Free emergency supply calculator: water, food, power and CO detector numbers for your household, based on ready.gov and CDC guidance.">
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head><body>
+<title>Emergency Supply Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: inputs on the left, a live "readout" panel on the right that stays in view; one column on phones. */
+:root {
+  color-scheme: dark;
+  --bg: #020713;
+  --panel: #0a1122;
+  --panel-2: #111a30;
+  --line: #24304d;
+  --fg: #eef0f5;
+  --muted: #9aa5bd;
+  --gold: #ffa630;
+  --gold-ink: #0a0f1a;
+  --warn: #ff6b4a;
+  --display: "Poppins", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1.08; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 60ch; margin: 0; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+form { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+legend { font-family: var(--display); font-weight: 700; font-size: 18px; padding: 0; margin-bottom: 10px; }
+.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+label, .lab { font-size: 13px; font-weight: 600; color: var(--muted); }
+input, select { width: 100%; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: inherit; font-variant-numeric: tabular-nums; }
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.seg { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.seg label { text-align: center; padding: 10px 6px; cursor: pointer; color: var(--fg); background: var(--panel); font-size: 14px; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg input:checked + label { background: var(--gold); color: var(--gold-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--fg); outline-offset: -3px; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.dev { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto; gap: 8px; align-items: end; }
+.dev-head { font-size: 12px; color: var(--muted); font-weight: 600; }
+@media (max-width: 520px) {
+  .dev { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .dev .name { grid-column: 1 / -1; }
+  .dev-head { display: none; }
+}
+@media (min-width: 521px) { .dev .lab { display: none; } }
+button { font: inherit; cursor: pointer; }
+.ghost { background: transparent; color: var(--gold); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 14px; font-weight: 600; align-self: flex-start; }
+.del { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; width: 42px; height: 44px; }
+.del:hover { color: var(--warn); border-color: var(--warn); }
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; }
+details .row { margin-top: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.out { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); min-width: 0; }
+@media (max-width: 860px) { .out { position: static; } }
+.out h2 { font-family: var(--display); font-size: 14px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin: 0; }
+.big { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--panel-2); border-radius: 10px; padding: 14px; min-width: 0; }
+.stat .n { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4.4vw, 36px); line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .u { font-size: 13px; color: var(--muted); }
+.stat .k { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.list li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; }
+.list li::before { content: ""; width: 14px; height: 14px; border: 2px solid var(--gold); border-radius: 3px; margin-top: 4px; }
+.warn { border: 1px solid var(--warn); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+.warn b { color: var(--warn); }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.cta { display: block; text-align: center; background: var(--gold); color: var(--gold-ink); font-family: var(--display); font-weight: 700; text-decoration: none; padding: 14px 18px; border-radius: 10px; }
+.cta:hover { filter: brightness(1.08); }
+button.cta { border: 0; width: 100%; font-size: 16px; }
+.cta.alt { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+.get { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 18px; }
+.get h3 { font-family: var(--display); font-size: 18px; margin: 0; }
+.err { color: var(--warn); font-size: 13px; margin: 0; }
+.ok { color: var(--gold); font-size: 14px; margin: 0; }
+footer { border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+footer a { color: var(--gold); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Lights Out Files</div>
+    <h1>How much do you need when the grid goes down?</h1>
+    <p class="lede">Enter your household. The numbers update as you type. The starting values are an example, so replace them with your own.</p>
+  </header>
+
+  <div class="grid">
+    <form id="f" novalidate>
+      <fieldset>
+        <legend>Your household</legend>
+        <div class="row">
+          <div class="field"><label for="adults">Adults</label><input id="adults" type="number" min="0" step="1" inputmode="numeric" value="2"></div>
+          <div class="field"><label for="children">Children</label><input id="children" type="number" min="0" step="1" inputmode="numeric" value="2"></div>
+          <div class="field"><label for="pets">Pets</label><input id="pets" type="number" min="0" step="1" inputmode="numeric" value="1"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="floors">Floors in your home</label><input id="floors" type="number" min="1" step="1" inputmode="numeric" value="2"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Days to cover</legend>
+        <div class="seg four" role="radiogroup" aria-label="Days to cover">
+          <input type="radio" name="days" id="d3" value="3" checked><label for="d3">3 days</label>
+          <input type="radio" name="days" id="d7" value="7"><label for="d7">7 days</label>
+          <input type="radio" name="days" id="d14" value="14"><label for="d14">14 days</label>
+          <input type="radio" name="days" id="dx" value="custom"><label for="dx">Other</label>
+        </div>
+        <div class="field" id="days-custom-wrap" hidden><label for="days-custom">Number of days (1 to 365)</label><input id="days-custom" type="number" min="1" max="365" step="1" inputmode="numeric" value="30"></div>
+        <p class="hint">ready.gov's basic kit covers several days. CDC suggests two weeks of water if you can.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Climate</legend>
+        <div class="seg" role="radiogroup" aria-label="Climate">
+          <input type="radio" name="climate" id="c-cold" value="cold"><label for="c-cold">Cold</label>
+          <input type="radio" name="climate" id="c-mild" value="mild" checked><label for="c-mild">Mild</label>
+          <input type="radio" name="climate" id="c-hot" value="hot"><label for="c-hot">Very hot</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Devices to keep running</legend>
+        <p class="hint">Find watts on the device label or charger. For a fridge or freezer, use the kWh per year on its yellow Energy Guide label instead of hours.</p>
+        <div class="dev dev-head" aria-hidden="true"><span>Device</span><span>Watts</span><span>Hours a day</span><span>kWh per year</span><span></span></div>
+        <div id="devs" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button type="button" class="ghost" id="add">Add a device</button>
+      </fieldset>
+
+      <details>
+        <summary>Assumptions you can change</summary>
+        <div class="row">
+          <div class="field"><label for="kcal">Calories per person per day</label><input id="kcal" type="number" min="500" step="100" inputmode="numeric" value="2000"></div>
+          <div class="field"><label for="loss">Battery loss allowance, %</label><input id="loss" type="number" min="0" max="60" step="1" inputmode="numeric" value="15"></div>
+        </div>
+        <p class="hint" style="margin-top:10px">2,000 calories is a planning figure, not a dietary recommendation. Use the efficiency your power station's maker states if you have it.</p>
+      </details>
+    </form>
+
+    <section class="out" aria-live="polite">
+      <h2 id="out-title">Your plan</h2>
+      <div class="big">
+        <div class="stat"><div class="k">Water</div><div class="n" id="o-water">0</div><div class="u" id="o-water-u">gallons</div></div>
+        <div class="stat"><div class="k">Food</div><div class="n" id="o-food">0</div><div class="u" id="o-food-u">calories</div></div>
+        <div class="stat"><div class="k">Power station size</div><div class="n" id="o-batt">0</div><div class="u" id="o-batt-u">watt-hours</div></div>
+        <div class="stat"><div class="k">CO detectors</div><div class="n" id="o-co">0</div><div class="u">minimum, one per floor</div></div>
+      </div>
+      <div id="warns" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div>
+        <h2 style="margin-bottom:12px">What to get</h2>
+        <ul class="list" id="buy"></ul>
+      </div>
+      <p class="note">If the power is out: a closed fridge keeps food safe for about 4 hours, a full freezer about 48 hours, a half-full freezer about 24 hours.</p>
+      <form class="get" id="get" novalidate>
+        <h3>Get this plan as a PDF</h3>
+        <p class="note">Your numbers, the checklist and the first steps for an outage, on two printable pages. Enter your email and the download starts. We also send the free kit list. Unsubscribe at any time.</p>
+        <div class="field"><label for="email">Email address</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+        <p class="err" id="email-err" hidden>Enter a valid email address, like name@example.com.</p>
+        <button class="cta" type="submit" id="get-btn">Download my plan (PDF)</button>
+        <p class="ok" id="get-ok" hidden>Your plan is downloading. Check your inbox to confirm your email and open the kit list.</p>
+      </form>
+      <a class="cta alt" id="kit-link" href="https://lights-out-files.kit.com/0402845ee1" target="_blank" rel="noopener">See the free kit list</a>
+    </section>
+  </div>
+
+  <footer>
+    <p style="margin:0">A planning aid based on ready.gov and CDC guidance. It is not medical advice. Check your device labels and your local emergency guidance.</p>
+    <p style="margin:0">Sources: <a href="https://www.ready.gov/kit" target="_blank" rel="noopener">ready.gov/kit</a>, <a href="https://www.ready.gov/power-outages" target="_blank" rel="noopener">ready.gov/power-outages</a>, <a href="https://www.energy.gov/energysaver/articles/estimating-appliance-and-home-electronic-energy-use" target="_blank" rel="noopener">U.S. Dept. of Energy</a>, <a href="https://pubs.ext.vt.edu/2901/2901-9014.html" target="_blank" rel="noopener">Virginia Tech Extension</a>. Pet water and hot-weather figures follow Ready Houston and Suffolk County OEM.</p>
+    <p style="margin:0">Lights Out Files may earn a commission from gear links on our list pages, at no extra cost to you. This calculator has no product links.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// Lights Out Files — Emergency Supply Calculator formulas.
+// One module so the page, the PDF and our scripts all use the same logic.
+// Sources: ready.gov/kit (1 gal/person/day), Ready Houston (1 gal/pet/day),
+// Suffolk County OEM (needs can double in very hot weather),
+// ready.gov/power-outages (CO detectors, fridge 4 h, freezer 48 h / 24 h),
+// Virginia Tech Extension and Dept. of Energy (watts x hours; kWh/yr / 365).
+const DEFAULT_KCAL = 2000;
+const DEFAULT_LOSS = 0.15;
+const HEAVY_LOAD_W = 1000;
+function nonNeg(n, fallback = 0) {
+    return typeof n === "number" && isFinite(n) && n > 0 ? n : fallback;
+}
+function deviceDailyWh(d) {
+    const kwh = nonNeg(d.kwhPerYear);
+    if (kwh > 0)
+        return (kwh / 365) * 1000;
+    return nonNeg(d.watts) * Math.min(nonNeg(d.hoursPerDay), 24);
+}
+function plan(h) {
+    const adults = Math.floor(nonNeg(h.adults));
+    const children = Math.floor(nonNeg(h.children));
+    const pets = Math.floor(nonNeg(h.pets));
+    const days = Math.floor(nonNeg(h.days));
+    const floors = Math.max(1, Math.floor(nonNeg(h.floors, 1)));
+    const people = adults + children;
+    const kcal = nonNeg(h.kcalPerPersonPerDay, DEFAULT_KCAL);
+    const loss = typeof h.lossAllowance === "number" && isFinite(h.lossAllowance) && h.lossAllowance >= 0
+        ? h.lossAllowance
+        : DEFAULT_LOSS;
+    const hot = h.climate === "hot";
+    const waterPerDay = (people + pets) * 1 * (hot ? 2 : 1);
+    const devices = [];
+    const missing = [];
+    let dailyWh = 0;
+    let outputW = 0;
+    for (const d of h.devices || []) {
+        const wh = deviceDailyWh(d);
+        const w = nonNeg(d.watts);
+        if (wh <= 0 && w <= 0)
+            continue;
+        const heavy = w >= HEAVY_LOAD_W;
+        devices.push({
+            name: d.name || "Device",
+            dailyWh: wh,
+            watts: w > 0 ? w : null,
+            minutesPer1000Wh: heavy ? (1000 / w) * 60 : null,
+            heavyLoad: heavy,
+        });
+        dailyWh += wh;
+        outputW += w;
+        if (w <= 0)
+            missing.push(d.name || "Device");
+    }
+    return {
+        people,
+        waterGallons: waterPerDay * days,
+        waterGallonsPerDay: waterPerDay,
+        hotClimateDoubled: hot,
+        foodKcal: people * days * kcal,
+        foodKcalPerDay: people * kcal,
+        coDetectorsMin: floors,
+        fridgeHours: 4,
+        freezerFullHours: 48,
+        freezerHalfHours: 24,
+        devices,
+        dailyWh,
+        batteryWh: dailyWh * days * (1 + loss),
+        requiredOutputW: outputW,
+        devicesMissingWatts: missing,
+    };
+}
+
+// Settings to fill in at deploy time.
+var CONFIG = {
+  kitListUrl: "https://lights-out-files.kit.com/0402845ee1",
+  // Kit form endpoint that receives the email. Needs one live test after deploy.
+  kitSubscribeUrl: "https://app.kit.com/forms/10169713/subscriptions",
+  // Google Analytics 4 Measurement ID, e.g. "G-XXXXXXXXXX". Empty = events are only kept on the page.
+  ga4Id: ""
+};
+
+// Source tag: calculator links carry ?src=yt-s01 and so on. Letters, digits, dash and underscore only.
+var SOURCE = (function () {
+  try {
+    var q = new URLSearchParams(location.search);
+    var v = (q.get("src") || q.get("utm_campaign") || "direct").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+    return v || "direct";
+  } catch (e) { return "direct"; }
+})();
+
+var TRACK_LOG = [];
+var TRACK_ONCE = {};
+(function () {
+  if (!CONFIG.ga4Id) return;
+  var s = document.createElement("script");
+  s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + CONFIG.ga4Id;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", CONFIG.ga4Id);
+})();
+// Each event fires once per visit, tagged with the source.
+function track(name) {
+  if (TRACK_ONCE[name]) return;
+  TRACK_ONCE[name] = 1;
+  TRACK_LOG.push({ event: name, source: SOURCE });
+  if (window.gtag) window.gtag("event", name, { source: SOURCE });
+}
+
+function subscribe(email) {
+  if (!CONFIG.kitSubscribeUrl) return;
+  try {
+    var fd = new FormData();
+    fd.append("email_address", email);
+    fd.append("fields[source]", SOURCE);
+    fetch(CONFIG.kitSubscribeUrl, { method: "POST", mode: "no-cors", body: fd }).catch(function () {});
+  } catch (e) {}
+}
+
+// Two-page plan PDF. No product or affiliate links, by design.
+function makePlanPdf(h, p) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return false;
+  var doc = new window.jspdf.jsPDF({ unit: "pt", format: "letter" });
+  var W = 612, M = 48, y = 0;
+  var n = function (v) { return Math.round(v).toLocaleString("en-US"); };
+  function band(title, sub) {
+    doc.setFillColor(2, 7, 19); doc.rect(0, 0, W, 96, "F");
+    doc.setTextColor(255, 166, 48); doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("LIGHTS OUT FILES", M, 34);
+    doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text(title, M, 62);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(200, 205, 215);
+    doc.text(sub, M, 80);
+    y = 126;
+  }
+  function head(t) {
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(180, 105, 0);
+    doc.text(t.toUpperCase(), M, y); y += 8;
+    doc.setDrawColor(220, 220, 220); doc.line(M, y, W - M, y); y += 18;
+  }
+  function para(t, size) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(size || 11); doc.setTextColor(30, 33, 38);
+    var lines = doc.splitTextToSize(t, W - 2 * M);
+    doc.text(lines, M, y); y += lines.length * ((size || 11) + 4) + 4;
+  }
+  function check(t) {
+    doc.setDrawColor(180, 105, 0); doc.setLineWidth(1.2); doc.rect(M, y - 9, 10, 10);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(30, 33, 38);
+    var lines = doc.splitTextToSize(t, W - 2 * M - 22);
+    doc.text(lines, M + 20, y); y += lines.length * 15 + 6;
+  }
+  function row(k, v) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(90, 96, 110); doc.text(k, M, y);
+    doc.setFont("helvetica", "bold"); doc.setTextColor(30, 33, 38); doc.text(v, 250, y); y += 18;
+  }
+
+  band("Your " + h.days + "-day outage plan", p.people + " people, " + Math.floor(h.pets || 0) + " pets, " + h.days + " days" + (p.hotClimateDoubled ? ", very hot climate" : ""));
+  head("Your numbers");
+  row("Water", n(p.waterGallons) + " gallons (" + n(p.waterGallons * 3.785) + " litres)" + (p.hotClimateDoubled ? ", doubled for heat" : ""));
+  row("Food", n(p.foodKcal) + " calories (" + n(p.foodKcalPerDay) + " a day)");
+  row("CO detectors", n(p.coDetectorsMin) + " minimum, plus one near each sleeping area");
+  if (p.batteryWh > 0) {
+    row("Power station", n(p.batteryWh) + " Wh (" + n(p.dailyWh) + " Wh a day)");
+    if (p.requiredOutputW > 0) row("Output needed", n(p.requiredOutputW) + " W if everything runs at once");
+  }
+  y += 10;
+  head("What to get");
+  check(n(p.waterGallons) + " gallons of stored water in food-grade containers");
+  check("Non-perishable, no-cook food totalling about " + n(p.foodKcal) + " calories, plus a manual can opener");
+  check(n(p.coDetectorsMin) + " battery-backup carbon monoxide detector" + (p.coDetectorsMin === 1 ? "" : "s") + ", plus one near each sleeping area");
+  if (p.batteryWh > 0) check("A power station of at least " + n(p.batteryWh) + " Wh" + (p.requiredOutputW > 0 ? " with " + n(p.requiredOutputW) + " W or more of output" : ""));
+  check("Battery or hand-crank radio, and a NOAA Weather Radio with tone alert");
+  check("Flashlight or lantern with spare batteries. Use battery lights instead of candles.");
+  check("Phone chargers and a backup battery, charged before the outage");
+  check("Cash, and copies of key documents in a waterproof container");
+  if (p.devices.length) {
+    y += 10; head("Your devices");
+    p.devices.forEach(function (d) {
+      row(String(d.name).slice(0, 34), n(d.dailyWh) + " Wh a day" + (d.watts ? ", " + n(d.watts) + " W" : ""));
+    });
+    p.devices.filter(function (d) { return d.heavyLoad; }).forEach(function (d) {
+      para("Heavy load: " + d.name + " at " + n(d.watts) + " W empties a 1,000 Wh power station in about " + n(d.minutesPer1000Wh) + " minutes.", 10);
+    });
+  }
+
+  doc.addPage();
+  band("When the power goes out", "Keep this page where you can find it in the dark.");
+  head("Food safety");
+  check("Keep fridge and freezer doors closed.");
+  check("A closed fridge keeps food safe for about 4 hours.");
+  check("A full freezer holds its temperature for about 48 hours, a half-full freezer about 24 hours.");
+  y += 10; head("Carbon monoxide");
+  check("Run a generator outdoors only, more than 20 feet from windows, doors and vents. Never in a home or garage.");
+  check("Never heat your home with a gas stove, oven or grill.");
+  check("If a CO alarm sounds or anyone feels dizzy, sick or has a headache, get everyone into fresh air and call your local emergency number.");
+  y += 10; head("Staying informed and connected");
+  check("Use the radio for official updates when the internet is down.");
+  check("Save phone battery: lower the brightness and close apps you do not need.");
+  check("Check on neighbours who are older or live alone.");
+  y += 10; head("Keeping this plan current");
+  check("Replace stored tap water every 6 months.");
+  check("Review stored food once a year.");
+  check("Test CO detector batteries when you change your clocks, and replace the unit every 5 years or as the maker says.");
+  y += 14;
+  para("Free kit list and printable checklist: lights-out-files.kit.com/0402845ee1", 11);
+  para("A planning aid based on ready.gov and CDC guidance. It is not medical advice. Check your device labels and your local emergency guidance. Sources: ready.gov/kit, ready.gov/power-outages, cdc.gov.", 9);
+  try { doc.save("lights-out-files-" + h.days + "-day-plan.pdf"); return true; } catch (e) { return false; }
+}
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var devs = $("devs"), seq = 0;
+  var fmt = function (n) { return Math.round(n).toLocaleString("en-US"); };
+  var num = function (el) { var v = parseFloat(el.value); return isFinite(v) ? v : 0; };
+
+  function addDevice(d) {
+    d = d || {}; var i = ++seq;
+    var row = document.createElement("div"); row.className = "dev";
+    function field(cls, lab, key, attrs, val) {
+      var w = document.createElement("div"); w.className = "field " + cls;
+      var l = document.createElement("label"); l.className = "lab"; l.textContent = lab; l.htmlFor = "dev" + i + "-" + key;
+      var inp = document.createElement("input"); inp.id = "dev" + i + "-" + key; inp.dataset.k = key;
+      inp.setAttribute("aria-label", lab);
+      for (var a in attrs) inp.setAttribute(a, attrs[a]);
+      if (val != null) inp.value = val;
+      w.appendChild(l); w.appendChild(inp); return w;
+    }
+    var numAttrs = { type: "number", min: "0", step: "any", inputmode: "decimal" };
+    row.appendChild(field("name", "Device", "name", { type: "text", placeholder: "e.g. Phone charger" }, d.name));
+    row.appendChild(field("", "Watts", "watts", numAttrs, d.watts));
+    row.appendChild(field("", "Hours a day", "hours", numAttrs, d.hoursPerDay));
+    row.appendChild(field("", "kWh per year", "kwh", numAttrs, d.kwhPerYear));
+    var del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×";
+    del.setAttribute("aria-label", "Remove device");
+    del.addEventListener("click", function () { row.remove(); render(); });
+    row.appendChild(del); devs.appendChild(row);
+  }
+
+  function read() {
+    var devices = [].map.call(devs.querySelectorAll(".dev"), function (r) {
+      var g = function (k) { return r.querySelector('[data-k="' + k + '"]'); };
+      var o = { name: g("name").value.trim() || "Device" };
+      var w = num(g("watts")), h = num(g("hours")), k = num(g("kwh"));
+      if (w > 0) o.watts = w; if (h > 0) o.hoursPerDay = h; if (k > 0) o.kwhPerYear = k;
+      return o;
+    });
+    var dv = document.querySelector('input[name="days"]:checked').value;
+    $("days-custom-wrap").hidden = dv !== "custom";
+    var days = dv === "custom" ? Math.min(365, Math.max(1, Math.floor(num($("days-custom")) || 1))) : +dv;
+    return {
+      adults: num($("adults")), children: num($("children")), pets: num($("pets")), floors: num($("floors")),
+      days: days,
+      climate: document.querySelector('input[name="climate"]:checked').value,
+      devices: devices, kcalPerPersonPerDay: num($("kcal")), lossAllowance: Math.max(0, num($("loss"))) / 100
+    };
+  }
+
+  function li(text) { var el = document.createElement("li"); var s = document.createElement("span"); s.textContent = text; el.appendChild(s); return el; }
+
+  function render() {
+    var h = read(), p = plan(h);
+    $("out-title").textContent = "Your " + h.days + "-day plan";
+    $("o-water").textContent = fmt(p.waterGallons);
+    $("o-water-u").textContent = "gallons (" + fmt(p.waterGallons * 3.785) + " litres)" + (p.hotClimateDoubled ? ", doubled for heat" : "");
+    $("o-food").textContent = fmt(p.foodKcal);
+    $("o-food-u").textContent = "calories, " + fmt(p.foodKcalPerDay) + " a day";
+    $("o-batt").textContent = p.batteryWh > 0 ? fmt(p.batteryWh) : "—";
+    $("o-batt-u").textContent = p.batteryWh > 0 ? "watt-hours, " + fmt(p.dailyWh) + " Wh a day" : "add a device to size it";
+    $("o-co").textContent = fmt(p.coDetectorsMin);
+
+    var warns = $("warns"); warns.textContent = "";
+    p.devices.filter(function (d) { return d.heavyLoad; }).forEach(function (d) {
+      var w = document.createElement("div"); w.className = "warn";
+      var b = document.createElement("b"); b.textContent = d.name + " is a heavy load. ";
+      w.appendChild(b);
+      w.appendChild(document.createTextNode("At " + fmt(d.watts) + " W it empties a 1,000 Wh power station in about " + fmt(d.minutesPer1000Wh) + " minutes. Battery power is a poor fit for heating; plan warm layers and one insulated room instead."));
+      warns.appendChild(w);
+    });
+    if (h.climate === "cold") {
+      var c = document.createElement("div"); c.className = "warn";
+      var cb = document.createElement("b"); cb.textContent = "Cold-weather safety. ";
+      c.appendChild(cb);
+      c.appendChild(document.createTextNode("Never heat your home with a gas stove, oven, grill or generator indoors. They produce carbon monoxide."));
+      warns.appendChild(c);
+    }
+
+    var buy = $("buy"); buy.textContent = "";
+    buy.appendChild(li(fmt(p.waterGallons) + " gallons of stored water in food-grade containers" + (h.pets > 0 ? ", pets included" : "")));
+    buy.appendChild(li("Non-perishable, no-cook food totalling about " + fmt(p.foodKcal) + " calories, plus a manual can opener"));
+    buy.appendChild(li(fmt(p.coDetectorsMin) + " battery-backup carbon monoxide detector" + (p.coDetectorsMin === 1 ? "" : "s") + ", plus one near each sleeping area"));
+    if (p.batteryWh > 0) {
+      var t = "A power station of at least " + fmt(p.batteryWh) + " Wh";
+      if (p.requiredOutputW > 0) t += " with " + fmt(p.requiredOutputW) + " W or more of output if everything runs at once";
+      buy.appendChild(li(t));
+      if (p.devicesMissingWatts.length) buy.appendChild(li("Add running watts for " + p.devicesMissingWatts.join(", ") + " to complete the output figure"));
+    }
+    buy.appendChild(li("Battery or hand-crank radio, and a flashlight or lantern with spare batteries"));
+  }
+
+  [{ name: "Fridge (example)", watts: 150, kwhPerYear: 400 }, { name: "Phone chargers (example)", watts: 20, hoursPerDay: 3 }, { name: "LED lantern (example)", watts: 10, hoursPerDay: 5 }].forEach(addDevice);
+  $("add").addEventListener("click", function () { addDevice(); render(); });
+  $("f").addEventListener("input", render);
+  $("f").addEventListener("change", render);
+  $("f").addEventListener("submit", function (e) { e.preventDefault(); });
+  render();
+
+  // Tracking: started, completed, email submitted, list-page click, each tagged with the source video.
+  var touched = {};
+  $("f").addEventListener("input", function (e) {
+    track("calculator_started");
+    if (e.target && e.target.id) touched[e.target.id] = 1;
+    if (Object.keys(touched).length >= 3) track("calculator_completed");
+  });
+  $("f").addEventListener("change", function (e) {
+    track("calculator_started");
+    if (e.target && e.target.name) { touched[e.target.name] = 1; }
+    if (Object.keys(touched).length >= 3) track("calculator_completed");
+  });
+  var kl = $("kit-link");
+  kl.href = CONFIG.kitListUrl + "?utm_source=calculator&utm_campaign=" + encodeURIComponent(SOURCE);
+  kl.addEventListener("click", function () { track("list_page_click"); });
+
+  $("get").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("email").value.trim();
+    var bad = !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+    $("email-err").hidden = !bad;
+    if (bad) { $("email").focus(); return; }
+    track("calculator_completed");
+    track("email_submitted");
+    subscribe(email);
+    var h = read();
+    var done = makePlanPdf(h, plan(h));
+    $("get-ok").hidden = false;
+    if (!done) $("get-ok").textContent = "You are signed up. The PDF could not be created in this browser, so check your inbox for the kit list.";
+  });
+})();
+</script>
+
+</body></html>
